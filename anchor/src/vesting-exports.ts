@@ -1,29 +1,29 @@
 // Here we export some useful types and functions for interacting with the Anchor program.
 import { AnchorProvider, Program } from '@coral-xyz/anchor'
 import { Cluster, PublicKey } from '@solana/web3.js'
-import TokenvestingIDL from '../target/idl/tokenvesting.json'
-import type { Tokenvesting } from '../target/types/tokenvesting'
+import VestingIDL from '../target/idl/vesting.json'
+import type { Vesting } from '../target/types/vesting'
 
 // Re-export the generated IDL and type
-export { Tokenvesting, TokenvestingIDL }
+export { Vesting, VestingIDL }
 
 // The programId is imported from the program IDL.
-export const TOKENVESTING_PROGRAM_ID = new PublicKey(TokenvestingIDL.address)
+export const VESTING_PROGRAM_ID = new PublicKey(VestingIDL.address)
 
 // This is a helper function to get the Tokenvesting Anchor program.
-export function getTokenvestingProgram(provider: AnchorProvider) {
-  return new Program(TokenvestingIDL as Tokenvesting, provider)
+export function getVestingProgram(provider: AnchorProvider) {
+  return new Program(VestingIDL as Vesting, provider)
 }
 
 // This is a helper function to get the program ID for the Tokenvesting program depending on the cluster.
-export function getTokenvestingProgramId(cluster: Cluster) {
+export function getVestingProgramId(cluster: Cluster) {
   switch (cluster) {
     case 'devnet':
     case 'testnet':
       // This is the program ID for the Tokenvesting program on devnet and testnet.
-      return new PublicKey('CounNZdmsQmWh7uVngV9FXW2dZ6zAgbJyYsvBpqbykg')
+      return new PublicKey('4ukTNmGEQYhbJpHEF4HFxeRhBCbi5AFFSL6dvWJcDv8V')
     case 'mainnet-beta':
     default:
-      return TOKENVESTING_PROGRAM_ID
+      return VESTING_PROGRAM_ID
   }
 }
