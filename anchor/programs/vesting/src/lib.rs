@@ -43,6 +43,7 @@ pub mod vesting {
         vault_info.amount_unlocked = 0;
         vault_info.start_time = start_time;
         vault_info.end_time = end_time;
+        vault_info.total_weeks = (end_time - start_time) / 604800;
 
         Ok(())
     }
@@ -60,14 +61,12 @@ pub mod vesting {
             CustomError::CliffPeriodNotPassed
         );
 
-        let passed_seconds = now - vault_info.start_time;
-        let total_seconds = vault_info.end_time - vault_info.start_time;
+        let weeks_passed = (now - vault_info.start_time) / 604800;
+        let total_entitled_weeks = std::cmp::min(weeks_passed, vault_info.total_weeks);
+        let entitled_amount = (vault_info.amount * total_entitled_weeks / vault_info.total_weeks)
+            .saturating_sub(vault_info.amount_unlocked);
 
-        let entitled_amount = if now >= vault_info.end_time {
-            vault_info.amount - vault_info.amount_unlocked
-        } else {
-            vault_info.amount * passed_seconds / total_seconds - vault_info.amount_unlocked
-        };
+        require!(entitled_amount > 0, CustomError::NoTokensToUnlock);
 
         let seeds = [b"vault".as_ref(), vault.mint.as_ref(), &[ctx.bumps.vault]];
         let signer = &[&seeds[..]];
@@ -173,10 +172,12 @@ pub struct VaultInfo {
     amount_unlocked: u64,
     start_time: u64,
     end_time: u64,
+    total_weeks: u64,
 }
 
 #[error_code]
 pub enum CustomError {
     EndBeforeStart,
     CliffPeriodNotPassed,
+    NoTokensToUnlock,
 }
