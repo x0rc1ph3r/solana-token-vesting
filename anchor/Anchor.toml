@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-vesting = "GphCVK2aMjMHF9jFsubw37tMqni2dT4DQwv6WztrCYaw"
+vesting = "6FuQ5pZHttiDZCnMXbjR1SGtM7UGRp33jrEGXJtgxg4d"
 
 [registry]
 url = "https://api.apr.dev"

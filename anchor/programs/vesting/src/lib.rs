@@ -6,7 +6,7 @@ use anchor_spl::{
     token::{Mint, Token, TokenAccount, Transfer},
 };
 
-declare_id!("GphCVK2aMjMHF9jFsubw37tMqni2dT4DQwv6WztrCYaw");
+declare_id!("6FuQ5pZHttiDZCnMXbjR1SGtM7UGRp33jrEGXJtgxg4d");
 
 #[program]
 pub mod vesting {
