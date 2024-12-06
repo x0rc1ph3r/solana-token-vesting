@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/vesting.json`.
  */
 export type Vesting = {
-  "address": "AsjZ3kWAUSQRNt2pZVeJkywhZ6gpLpHZmJjduPmKZDZZ",
+  "address": "GphCVK2aMjMHF9jFsubw37tMqni2dT4DQwv6WztrCYaw",
   "metadata": {
     "name": "vesting",
     "version": "0.1.0",
@@ -14,103 +14,86 @@ export type Vesting = {
   },
   "instructions": [
     {
-      "name": "claimToken",
+      "name": "lock",
       "discriminator": [
-        116,
-        206,
-        27,
-        191,
-        166,
+        21,
         19,
-        0,
-        73
+        208,
+        43,
+        237,
+        62,
+        255,
+        87
       ],
       "accounts": [
         {
-          "name": "beneficiary",
+          "name": "signer",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "employeeAccount"
-          ]
+          "signer": true
         },
         {
-          "name": "employeeAccount",
+          "name": "vault",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  101,
-                  109,
-                  112,
-                  108,
-                  111,
-                  121,
-                  101,
-                  101,
-                  95,
                   118,
-                  101,
-                  115,
-                  116,
-                  105,
-                  110,
-                  103
+                  97,
+                  117,
+                  108,
+                  116
                 ]
-              },
-              {
-                "kind": "account",
-                "path": "beneficiary"
-              },
-              {
-                "kind": "account",
-                "path": "vestingAccount"
               }
             ]
           }
         },
         {
-          "name": "vestingAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "arg",
-                "path": "companyName"
-              }
-            ]
-          },
-          "relations": [
-            "employeeAccount"
-          ]
-        },
-        {
-          "name": "mint",
-          "relations": [
-            "vestingAccount"
-          ]
-        },
-        {
-          "name": "treasuryTokenAccount",
-          "writable": true,
-          "relations": [
-            "vestingAccount"
-          ]
-        },
-        {
-          "name": "employeeTokenAccount",
+          "name": "vaultAta",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "beneficiary"
+                "path": "vault"
               },
               {
-                "kind": "account",
-                "path": "tokenProgram"
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
               },
               {
                 "kind": "account",
@@ -157,7 +140,46 @@ export type Vesting = {
           }
         },
         {
-          "name": "tokenProgram"
+          "name": "vaultInfo",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  105,
+                  110,
+                  102,
+                  111
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "receiver"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "signerAta",
+          "writable": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "associatedTokenProgram",
@@ -170,110 +192,34 @@ export type Vesting = {
       ],
       "args": [
         {
-          "name": "companyName",
-          "type": "string"
-        }
-      ]
-    },
-    {
-      "name": "createEmployeeAccount",
-      "discriminator": [
-        94,
-        118,
-        255,
-        19,
-        171,
-        159,
-        58,
-        107
-      ],
-      "accounts": [
-        {
-          "name": "owner",
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "vestingAccount"
-          ]
+          "name": "receiver",
+          "type": "pubkey"
         },
         {
-          "name": "beneficiary"
-        },
-        {
-          "name": "vestingAccount"
-        },
-        {
-          "name": "employeeAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  101,
-                  109,
-                  112,
-                  108,
-                  111,
-                  121,
-                  101,
-                  101,
-                  95,
-                  118,
-                  101,
-                  115,
-                  116,
-                  105,
-                  110,
-                  103
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "beneficiary"
-              },
-              {
-                "kind": "account",
-                "path": "vestingAccount"
-              }
-            ]
-          }
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "startTime",
-          "type": "i64"
-        },
-        {
-          "name": "endTime",
-          "type": "i64"
-        },
-        {
-          "name": "totalAmount",
+          "name": "amount",
           "type": "u64"
         },
         {
-          "name": "cliffTime",
-          "type": "i64"
+          "name": "startTime",
+          "type": "u64"
+        },
+        {
+          "name": "endTime",
+          "type": "u64"
         }
       ]
     },
     {
-      "name": "createVestingAccount",
+      "name": "unlock",
       "discriminator": [
-        129,
-        178,
-        2,
-        13,
-        217,
-        172,
-        230,
-        218
+        101,
+        155,
+        40,
+        21,
+        158,
+        189,
+        56,
+        203
       ],
       "accounts": [
         {
@@ -282,13 +228,147 @@ export type Vesting = {
           "signer": true
         },
         {
-          "name": "vestingAccount",
+          "name": "vault",
           "writable": true,
           "pda": {
             "seeds": [
               {
-                "kind": "arg",
-                "path": "companyName"
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultAta",
+          "writable": true
+        },
+        {
+          "name": "receiverAta",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "receiver"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "receiver"
+        },
+        {
+          "name": "vaultInfo",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  105,
+                  110,
+                  102,
+                  111
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "receiver"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
               }
             ]
           }
@@ -297,173 +377,95 @@ export type Vesting = {
           "name": "mint"
         },
         {
-          "name": "treasuryTokenAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  101,
-                  115,
-                  116,
-                  105,
-                  110,
-                  103,
-                  95,
-                  116,
-                  114,
-                  101,
-                  97,
-                  115,
-                  117,
-                  114,
-                  121
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "companyName"
-              }
-            ]
-          }
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "tokenProgram"
         }
       ],
-      "args": [
-        {
-          "name": "companyName",
-          "type": "string"
-        }
-      ]
+      "args": []
     }
   ],
   "accounts": [
     {
-      "name": "employeeAccount",
+      "name": "vault",
       "discriminator": [
-        65,
-        245,
-        87,
-        188,
-        58,
-        86,
-        209,
-        151
+        211,
+        8,
+        232,
+        43,
+        2,
+        152,
+        117,
+        119
       ]
     },
     {
-      "name": "vestingAccount",
+      "name": "vaultInfo",
       "discriminator": [
-        102,
-        73,
-        10,
-        233,
-        200,
-        188,
-        228,
-        216
+        133,
+        250,
+        161,
+        78,
+        246,
+        27,
+        55,
+        187
       ]
     }
   ],
   "errors": [
     {
       "code": 6000,
-      "name": "claimNotAvailableYet",
-      "msg": "Claim not available yet"
+      "name": "endBeforeStart"
     },
     {
       "code": 6001,
-      "name": "invalidVestingPeriod",
-      "msg": "Invalid vesting Period"
-    },
-    {
-      "code": 6002,
-      "name": "calculationOverflow",
-      "msg": "Calculation Overflow"
-    },
-    {
-      "code": 6003,
-      "name": "nothingToClaim",
-      "msg": "Nothing to claim"
+      "name": "cliffPeriodNotPassed"
     }
   ],
   "types": [
     {
-      "name": "employeeAccount",
+      "name": "vault",
       "type": {
         "kind": "struct",
-        "fields": [
-          {
-            "name": "beneficiary",
-            "type": "pubkey"
-          },
-          {
-            "name": "startTime",
-            "type": "i64"
-          },
-          {
-            "name": "endTime",
-            "type": "i64"
-          },
-          {
-            "name": "cliffTime",
-            "type": "i64"
-          },
-          {
-            "name": "vestingAccount",
-            "type": "pubkey"
-          },
-          {
-            "name": "totalAmount",
-            "type": "u64"
-          },
-          {
-            "name": "totalWithdrawn",
-            "type": "u64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
+        "fields": []
       }
     },
     {
-      "name": "vestingAccount",
+      "name": "vaultInfo",
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "owner",
-            "type": "pubkey"
-          },
           {
             "name": "mint",
             "type": "pubkey"
           },
           {
-            "name": "treasuryTokenAccount",
+            "name": "receiver",
             "type": "pubkey"
           },
           {
-            "name": "companyName",
-            "type": "string"
+            "name": "amount",
+            "type": "u64"
           },
           {
-            "name": "treasuryBump",
-            "type": "u8"
+            "name": "amountUnlocked",
+            "type": "u64"
           },
           {
-            "name": "bump",
-            "type": "u8"
+            "name": "startTime",
+            "type": "u64"
+          },
+          {
+            "name": "endTime",
+            "type": "u64"
           }
         ]
       }

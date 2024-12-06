@@ -1,145 +1,875 @@
-import * as anchor from "@coral-xyz/anchor"
-import { Keypair, PublicKey } from "@solana/web3.js";
-import { BankrunProvider } from "anchor-bankrun";
-import { startAnchor, BanksClient, ProgramTestContext, Clock } from "solana-bankrun";
-import IDL from "../target/idl/vesting.json"
-import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
-import { Vesting } from "anchor/target/types/vesting";
-import { createMint, mintTo } from "spl-token-bankrun";
-import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { BN } from "bn.js";
+import { workspace, setProvider, AnchorProvider, BN } from "@coral-xyz/anchor"
+import { Program } from "@coral-xyz/anchor"
+import { Vesting } from "../target/types/vesting"
+import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js"
+import {
+    createMint,
+    TOKEN_PROGRAM_ID,
+    mintTo,
+    getOrCreateAssociatedTokenAccount,
+    getAssociatedTokenAddress,
+    getAssociatedTokenAddressSync,
+} from "@solana/spl-token"
+import { before } from "node:test"
+import assert from "node:assert"
 
-describe("Vesting Smart Contract Tests", () => {
+// console.log(getAssociatedTokenAddressSync(new PublicKey('24MejQPSucVCS9gvuJ9TZ1RVvPV3ErnyVpJrD4kggNRf'), new PublicKey('ERz3pLH6BjHaisSZNh39MTdKhLyYGcNZM64j3pCF1xWj'), true).toBase58())
 
-    const companyName = "companyName"
-    let beneficiary: Keypair;
-    let context: ProgramTestContext;
-    let provider: BankrunProvider;
-    let program: anchor.Program<Vesting>;
-    let banksClient: BanksClient;
-    let employer: Keypair;
-    let mint: PublicKey;
-    let beneficiaryProvider: BankrunProvider;
-    let program2: anchor.Program<Vesting>;
-    let vestingAccountKey: PublicKey;
-    let treasuryTokenAccount: PublicKey;
-    let employeeAccount: PublicKey;
+describe("solana-vesting-program", () => {
+    const provider = AnchorProvider.env()
+    const connection = provider.connection
 
-    beforeAll(async () => {
-        beneficiary = new anchor.web3.Keypair();
+    setProvider(provider)
 
-        context = await startAnchor(
-            "",
-            [{ name: "vesting", programId: new PublicKey(IDL.address) }],
-            [
-                {
-                    address: beneficiary.publicKey,
-                    info: {
-                        lamports: 1_000_000_000,
-                        data: Buffer.alloc(0),
-                        owner: SYSTEM_PROGRAM_ID,
-                        executable: false,
-                    }
-                }
-            ]
-        );
+    const program =
+        workspace.SolanaVestingProgram as Program<Vesting>
 
-        provider = new BankrunProvider(context);
+    const satoshi = Keypair.generate()
+    const vitalik = Keypair.generate()
 
-        anchor.setProvider(provider);
+    const alice = Keypair.generate()
+    const alicia = Keypair.generate()
+    const bob = Keypair.generate()
+    const marley = Keypair.generate()
 
-        program = new anchor.Program<Vesting>(IDL as Vesting, provider);
+    const sleep = (timeout: number) =>
+        new Promise((resolve) => setTimeout(resolve, timeout))
 
-        banksClient = context.banksClient;
+    const getVault = () => {
+        return PublicKey.findProgramAddressSync(
+            [Buffer.from("vault")],
+            program.programId
+        )[0]
+    }
 
-        employer = provider.wallet.payer;
+    const getLocking = (receiver: PublicKey, mint: PublicKey) => {
+        return PublicKey.findProgramAddressSync(
+            [Buffer.from("locking"), receiver.toBuffer(), mint.toBuffer()],
+            program.programId
+        )[0]
+    }
 
-        //@ts-expect-error
-        mint = await createMint(banksClient, employer, employer.publicKey, null, 9);
+    const mintBtc = async (
+        receiver: PublicKey,
+        amount: number,
+        isPda?: true
+    ) => {
+        const { address } = await getOrCreateAssociatedTokenAccount(
+            connection,
+            satoshi,
+            btcMint,
+            receiver,
+            isPda
+        )
+        await mintTo(connection, satoshi, btcMint, address, satoshi, amount)
+    }
 
-        beneficiaryProvider = new BankrunProvider(context);
-        beneficiaryProvider.wallet = new NodeWallet(beneficiary);
+    const mintEth = async (
+        receiver: PublicKey,
+        amount: number,
+        isPda?: true
+    ) => {
+        const { address } = await getOrCreateAssociatedTokenAccount(
+            connection,
+            vitalik,
+            ethMint,
+            receiver,
+            isPda
+        )
+        await mintTo(connection, vitalik, ethMint, address, vitalik, amount)
+    }
 
-        program2 = new anchor.Program<Vesting>(IDL as Vesting, beneficiaryProvider);
+    const getBtcAddress = async (
+        receiver: PublicKey,
+        allowOwnerOffCurve?: boolean
+    ) => {
+        const address = await getAssociatedTokenAddress(
+            btcMint,
+            receiver,
+            allowOwnerOffCurve
+        )
+        return address
+    }
 
-        [vestingAccountKey] = PublicKey.findProgramAddressSync(
-            [Buffer.from(companyName)],
-            program.programId,
-        );
+    const getEthAddress = async (
+        receiver: PublicKey,
+        allowOwnerOffCurve?: boolean
+    ) => {
+        const address = await getAssociatedTokenAddress(
+            ethMint,
+            receiver,
+            allowOwnerOffCurve
+        )
+        return address
+    }
 
-        [treasuryTokenAccount] = PublicKey.findProgramAddressSync(
-            [Buffer.from("vesting_treasury"), Buffer.from(companyName)],
-            program.programId,
-        );
-
-        [employeeAccount] = PublicKey.findProgramAddressSync(
-            [Buffer.from("employee_vesting"),
-            beneficiary.publicKey.toBuffer(),
-            vestingAccountKey.toBuffer()],
-            program.programId,
-        );
-    })
-
-    it("Create a vesting account", async () => {
-        const tx = await program.methods.createVestingAccount(companyName).accounts({
-            signer: employer.publicKey,
-            mint,
-            tokenProgram: TOKEN_PROGRAM_ID,
-        }).rpc({ commitment: "confirmed" });
-
-        const vestingAccountData = await program.account.vestingAccount.fetch(
-            vestingAccountKey,
-            'confirmed'
+    const getAirdrop = async (receiver: PublicKey) => {
+        const signature = await connection.requestAirdrop(
+            receiver,
+            3 * LAMPORTS_PER_SOL
         )
 
-        console.log(vestingAccountData);
-        console.log("Create vesting Account:", tx);
+        const { blockhash, lastValidBlockHeight } =
+            await connection.getLatestBlockhash()
+
+        await connection.confirmTransaction({
+            blockhash,
+            lastValidBlockHeight,
+            signature,
+        })
+    }
+
+    const vault = getVault()
+
+    let btcMint: PublicKey
+    let ethMint: PublicKey
+
+    before(async () => {
+        await Promise.all([
+            getAirdrop(satoshi.publicKey),
+            getAirdrop(vitalik.publicKey),
+            getAirdrop(alice.publicKey),
+            getAirdrop(alicia.publicKey),
+            getAirdrop(bob.publicKey),
+            getAirdrop(marley.publicKey),
+        ])
     })
 
-    it("Fund the treasury token account", async () => {
-        const amount = 10_000 * 10 ** 9;
-        const mint_tx = await mintTo(
-            //@ts-expect-error
-            banksClient,
-            employer,
-            mint,
-            treasuryTokenAccount,
-            employer.publicKey,
-            amount
+    before(async () => {
+        btcMint = await createMint(
+            connection,
+            satoshi,
+            satoshi.publicKey,
+            null,
+            9,
+            undefined,
+            {},
+            TOKEN_PROGRAM_ID
         )
-        console.log("mint treasury token account:", mint_tx);
+
+        ethMint = await createMint(
+            connection,
+            vitalik,
+            vitalik.publicKey,
+            null,
+            9,
+            undefined,
+            {},
+            TOKEN_PROGRAM_ID
+        )
     })
 
-    it("Create employee vesting account", async () => {
-        const tx2 = await program.methods.createEmployeeAccount(
-            new BN(0),
-            new BN(100),
-            new BN(100),
-            new BN(0),
-        ).accounts({
-            beneficiary: beneficiary.publicKey,
-            vestingAccount: vestingAccountKey
-        }).rpc({ commitment: 'confirmed', skipPreflight: true });
-
-        console.log("Create employeee vesting acc tx:", tx2);
-        console.log("Employee account: ", employeeAccount.toBase58());
+    before(async () => {
+        await Promise.all([
+            mintBtc(bob.publicKey, 21_000_000_000_000),
+            mintBtc(alicia.publicKey, 0),
+            mintEth(alice.publicKey, 100_000_000_000_000),
+        ])
     })
 
-    it("claim the employee's vested tokens", async () => {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+    it("Can't lock tokens when ending date is before starting date!", async () => {
+        const amount = new BN(1_000_000_000_000)
+        const startDate = new BN(Math.floor(Date.now() / 1000) + 10) // 10 sec after now
+        const endDate = new BN(Math.floor(Date.now() / 1000) + 1) // 1 sec after now
 
-        const currentClock = await banksClient.getClock();
-        context.setClock(
-            new Clock(
-                currentClock.slot,
-                currentClock.epochStartTimestamp,
-                currentClock.epoch,
-                currentClock.leaderScheduleEpoch,
-                1000n
-            ))
+        const locking = getLocking(marley.publicKey, btcMint)
+        const vaultAta = await getAssociatedTokenAddress(btcMint, vault, true)
+        const bobAta = await getAssociatedTokenAddress(
+            btcMint,
+            bob.publicKey,
+            false
+        )
 
-        const tx3 = await program2.methods.claimToken(companyName).accounts({ tokenProgram: TOKEN_PROGRAM_ID }).rpc({ commitment: 'confirmed' })
-        console.log("claim tokens tx", tx3);
+        try {
+            await program.methods
+                .lock(marley.publicKey, amount, startDate, endDate)
+                .accounts({
+                    vault,
+                    locking,
+                    vaultAta,
+                    signerAta: bobAta,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(error.error.errorMessage, "EndBeforeStart")
+        }
+    })
+
+    it("Can't lock tokens when vault PDA ATA is mistaken!", async () => {
+        const amount = new BN(1_000_000_000_000)
+        const startDate = new BN(Math.floor(Date.now() / 1000) + 1) // 1 sec after now
+        const endDate = new BN(Math.floor(Date.now() / 1000) + 5) // 5 secs after now
+
+        const locking = getLocking(marley.publicKey, btcMint)
+        const fakeVaultAta = await getAssociatedTokenAddress(
+            btcMint,
+            alicia.publicKey,
+            false
+        )
+        const bobAta = await getAssociatedTokenAddress(
+            btcMint,
+            bob.publicKey,
+            false
+        )
+
+        try {
+            await program.methods
+                .lock(marley.publicKey, amount, startDate, endDate)
+                .accounts({
+                    vault,
+                    locking,
+                    vaultAta: fakeVaultAta,
+                    signerAta: bobAta,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(
+                error.error.errorMessage,
+                "A token owner constraint was violated"
+            )
+        }
+    })
+
+    it("Can't lock tokens when both vault PDA & vault PDA ATA is mistaken!", async () => {
+        const amount = new BN(1_000_000_000_000)
+        const startDate = new BN(Math.floor(Date.now() / 1000) + 1) // 1 sec after now
+        const endDate = new BN(Math.floor(Date.now() / 1000) + 5) // 5 secs after now
+
+        const locking = getLocking(marley.publicKey, btcMint)
+        const fakeVault = Keypair.generate().publicKey
+        const fakeVaultAta = await getAssociatedTokenAddress(
+            btcMint,
+            fakeVault,
+            false
+        )
+        const bobAta = await getAssociatedTokenAddress(
+            btcMint,
+            bob.publicKey,
+            false
+        )
+
+        try {
+            await program.methods
+                .lock(marley.publicKey, amount, startDate, endDate)
+                .accounts({
+                    vault: fakeVault,
+                    locking,
+                    vaultAta: fakeVaultAta,
+                    signerAta: bobAta,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(
+                error.error.errorMessage,
+                "A seeds constraint was violated"
+            )
+        }
+    })
+
+    it("Can't lock tokens when balance is not enough!", async () => {
+        const amount = new BN(999_000_000_000_000)
+        const startDate = new BN(Math.floor(Date.now() / 1000) + 1) // 1 sec after now
+        const endDate = new BN(Math.floor(Date.now() / 1000) + 5) // 5 secs after now
+
+        const locking = getLocking(marley.publicKey, btcMint)
+        const vaultAta = await getAssociatedTokenAddress(btcMint, vault, true)
+        const bobAta = await getAssociatedTokenAddress(
+            btcMint,
+            bob.publicKey,
+            false
+        )
+
+        try {
+            await program.methods
+                .lock(marley.publicKey, amount, startDate, endDate)
+                .accounts({
+                    vault,
+                    locking,
+                    vaultAta,
+                    signerAta: bobAta,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(
+                error.logs.at(-5),
+                "Program log: Error: insufficient funds"
+            )
+        }
+    })
+
+    it("Can lock tokens!", async () => {
+        const amount = new BN(1_000_000_000_000)
+        const startDate = new BN(Math.floor(Date.now() / 1000) + 1) // 1 sec after now
+        const endDate = new BN(Math.floor(Date.now() / 1000) + 5) // 5 secs after now
+
+        const locking = getLocking(marley.publicKey, btcMint)
+        const vaultAta = await getAssociatedTokenAddress(btcMint, vault, true)
+        const bobAta = await getAssociatedTokenAddress(
+            btcMint,
+            bob.publicKey,
+            false
+        )
+
+        await program.methods
+            .lock(marley.publicKey, amount, startDate, endDate)
+            .accounts({
+                vault,
+                locking,
+                vaultAta,
+                signerAta: bobAta,
+                signer: bob.publicKey,
+                mint: btcMint,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .signers([bob])
+            .rpc()
+
+        const account = await program.account.locking.fetch(locking)
+
+        assert(account.amount.eq(amount))
+        assert(account.amountUnlocked.eq(new BN(0)))
+        assert(account.startDate.eq(startDate))
+        assert(account.endDate.eq(endDate))
+        assert(account.mint.equals(btcMint))
+        assert(account.receiver.equals(marley.publicKey))
+
+        const bobRemainingBalance = (
+            await connection.getTokenAccountBalance(bobAta)
+        ).value.amount
+        const vaultNewBalance = (
+            await connection.getTokenAccountBalance(vaultAta)
+        ).value.amount
+
+        assert(bobRemainingBalance === String(20_000_000_000_000))
+        assert(vaultNewBalance === String(1_000_000_000_000))
+    })
+
+    it("Can't unlock tokens when cliff period is not passed!", async () => {
+        const locking = getLocking(marley.publicKey, btcMint)
+        const vaultAta = await getAssociatedTokenAddress(btcMint, vault, true)
+        const marleyAta = await getAssociatedTokenAddress(
+            btcMint,
+            marley.publicKey,
+            false
+        )
+        try {
+            await program.methods
+                .unlock()
+                .accounts({
+                    vault,
+                    locking,
+                    vaultAta,
+                    receiverAta: marleyAta,
+                    receiver: marley.publicKey,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(error.error.errorMessage, "CliffPeriodNotPassed")
+        }
+    })
+
+    it("Can't unlock tokens when vault PDA is mistaken!", async () => {
+        const locking = getLocking(marley.publicKey, btcMint)
+        const fakeVault = Keypair.generate().publicKey
+        const vaultAta = await getAssociatedTokenAddress(btcMint, vault, true)
+        const marleyAta = await getAssociatedTokenAddress(
+            btcMint,
+            marley.publicKey,
+            false
+        )
+
+        await sleep(3000)
+
+        try {
+            await program.methods
+                .unlock()
+                .accounts({
+                    vault: fakeVault,
+                    locking,
+                    vaultAta,
+                    receiverAta: marleyAta,
+                    receiver: marley.publicKey,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(
+                error.error.errorMessage,
+                "The program expected this account to be already initialized"
+            )
+        }
+    })
+
+    it("Can't unlock tokens when vault PDA ATA is mistaken!", async () => {
+        const locking = getLocking(marley.publicKey, btcMint)
+        const fakeVaultAta = Keypair.generate().publicKey
+        const marleyAta = await getAssociatedTokenAddress(
+            btcMint,
+            marley.publicKey,
+            false
+        )
+
+        try {
+            await program.methods
+                .unlock()
+                .accounts({
+                    vault,
+                    locking,
+                    vaultAta: fakeVaultAta,
+                    receiverAta: marleyAta,
+                    receiver: marley.publicKey,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(
+                error.error.errorMessage,
+                "The program expected this account to be already initialized"
+            )
+        }
+    })
+
+    it("Can't unlock tokens when both vault PDA & vault PDA ATA is mistaken!", async () => {
+        const locking = getLocking(marley.publicKey, btcMint)
+        const fakeVault = Keypair.generate().publicKey
+        const fakeVaultAta = await getAssociatedTokenAddress(
+            btcMint,
+            fakeVault,
+            true
+        )
+        const marleyAta = await getAssociatedTokenAddress(
+            btcMint,
+            marley.publicKey,
+            false
+        )
+
+        try {
+            await program.methods
+                .unlock()
+                .accounts({
+                    vault: fakeVault,
+                    locking,
+                    vaultAta: fakeVaultAta,
+                    receiverAta: marleyAta,
+                    receiver: marley.publicKey,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(
+                error.error.errorMessage,
+                "The program expected this account to be already initialized"
+            )
+        }
+    })
+
+    it("Can't unlock tokens when vault PDA & vault PDA ATA don't match!", async () => {
+        const locking = getLocking(marley.publicKey, btcMint)
+        const fakeVault = Keypair.generate().publicKey
+        const fakeVaultAta = await getAssociatedTokenAddress(
+            btcMint,
+            fakeVault,
+            true
+        )
+        const marleyAta = await getAssociatedTokenAddress(
+            btcMint,
+            marley.publicKey,
+            false
+        )
+
+        try {
+            await program.methods
+                .unlock()
+                .accounts({
+                    vault,
+                    locking,
+                    vaultAta: fakeVaultAta,
+                    receiverAta: marleyAta,
+                    receiver: marley.publicKey,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(
+                error.error.errorMessage,
+                "The program expected this account to be already initialized"
+            )
+        }
+    })
+
+    it("Can't unlock tokens when receiver is mistaken!", async () => {
+        const locking = getLocking(marley.publicKey, btcMint)
+        const vaultAta = await getAssociatedTokenAddress(btcMint, vault, true)
+        const marleyAta = await getAssociatedTokenAddress(
+            btcMint,
+            marley.publicKey,
+            false
+        )
+        const fakereceiver = alicia.publicKey
+        try {
+            await program.methods
+                .unlock()
+                .accounts({
+                    vault,
+                    locking,
+                    vaultAta,
+                    receiverAta: marleyAta,
+                    receiver: fakereceiver,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+
+            throw Error("Should have thrown!")
+        } catch { }
+    })
+
+    it("Can't unlock tokens when receiver ATA is mistaken!", async () => {
+        const locking = getLocking(marley.publicKey, btcMint)
+        const vaultAta = await getAssociatedTokenAddress(btcMint, vault, true)
+        const fakereceiverAta = await getAssociatedTokenAddress(
+            btcMint,
+            alicia.publicKey,
+            false
+        )
+        try {
+            await program.methods
+                .unlock()
+                .accounts({
+                    vault,
+                    locking,
+                    vaultAta,
+                    receiverAta: fakereceiverAta,
+                    receiver: marley.publicKey,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(
+                error.error.errorMessage,
+                "A token owner constraint was violated"
+            )
+        }
+    })
+
+    it("Can't unlock tokens when both receiver & receiver ATA is mistaken!", async () => {
+        const locking = getLocking(marley.publicKey, btcMint)
+        const vaultAta = await getAssociatedTokenAddress(btcMint, vault, true)
+        const fakereceiver = alicia.publicKey
+        const fakereceiverAta = await getAssociatedTokenAddress(
+            btcMint,
+            fakereceiver,
+            false
+        )
+        try {
+            await program.methods
+                .unlock()
+                .accounts({
+                    vault,
+                    locking,
+                    vaultAta,
+                    receiverAta: fakereceiverAta,
+                    receiver: fakereceiver,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(
+                error.error.errorMessage,
+                "A seeds constraint was violated"
+            )
+        }
+    })
+
+    it("Can't unlock tokens when receiver & receiver ATA don't match!", async () => {
+        const locking = getLocking(marley.publicKey, btcMint)
+        const vaultAta = await getAssociatedTokenAddress(btcMint, vault, true)
+        const fakereceiverAta = await getAssociatedTokenAddress(
+            btcMint,
+            alicia.publicKey,
+            false
+        )
+        try {
+            await program.methods
+                .unlock()
+                .accounts({
+                    vault,
+                    locking,
+                    vaultAta,
+                    receiverAta: fakereceiverAta,
+                    receiver: marley.publicKey,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(
+                error.error.errorMessage,
+                "A token owner constraint was violated"
+            )
+        }
+    })
+
+    it("Can't unlock tokens when locking PDA is mistaken!", async () => {
+        const amount = new BN(0)
+        const startDate = new BN(Math.floor(Date.now() / 1000) + 1) // 1 sec after now
+        const endDate = new BN(Math.floor(Date.now() / 1000) + 5) // 5 secs after now
+
+        const locking = getLocking(alicia.publicKey, btcMint)
+        const vaultAta = await getAssociatedTokenAddress(btcMint, vault, true)
+        const bobAta = await getAssociatedTokenAddress(
+            btcMint,
+            bob.publicKey,
+            false
+        )
+        const marleyAta = await getAssociatedTokenAddress(
+            btcMint,
+            marley.publicKey,
+            false
+        )
+
+        await program.methods
+            .lock(alicia.publicKey, amount, startDate, endDate)
+            .accounts({
+                vault,
+                locking,
+                vaultAta,
+                signerAta: bobAta,
+                signer: bob.publicKey,
+                mint: btcMint,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .signers([bob])
+            .rpc()
+
+        try {
+            await program.methods
+                .unlock()
+                .accounts({
+                    vault,
+                    locking,
+                    vaultAta,
+                    receiverAta: marleyAta,
+                    receiver: marley.publicKey,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(
+                error.error.errorMessage,
+                "A seeds constraint was violated"
+            )
+        }
+    })
+
+    it("Can't unlock tokens when mint is mistaken!", async () => {
+        const locking = getLocking(marley.publicKey, btcMint)
+        const vaultAta = await getAssociatedTokenAddress(btcMint, vault, true)
+        const fakereceiverAta = await getAssociatedTokenAddress(
+            btcMint,
+            alicia.publicKey,
+            false
+        )
+        try {
+            await program.methods
+                .unlock()
+                .accounts({
+                    vault,
+                    locking,
+                    vaultAta,
+                    receiverAta: fakereceiverAta,
+                    receiver: marley.publicKey,
+                    signer: bob.publicKey,
+                    mint: ethMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(
+                error.error.errorMessage,
+                "A token mint constraint was violated"
+            )
+        }
+    })
+
+    it("Can unlock tokens after cliff duration is passed!", async () => {
+        const locking = getLocking(marley.publicKey, btcMint)
+        const vaultAta = await getAssociatedTokenAddress(btcMint, vault, true)
+        const marleyAta = await getAssociatedTokenAddress(
+            btcMint,
+            marley.publicKey,
+            false
+        )
+
+        await program.methods
+            .unlock()
+            .accounts({
+                vault,
+                locking,
+                vaultAta,
+                receiverAta: marleyAta,
+                receiver: marley.publicKey,
+                signer: bob.publicKey,
+                mint: btcMint,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .signers([bob])
+            .rpc()
+    })
+
+    it("Can unlock tokens after ending data is passed!", async () => {
+        const locking = getLocking(marley.publicKey, btcMint)
+        const vaultAta = await getAssociatedTokenAddress(btcMint, vault, true)
+        const marleyAta = await getAssociatedTokenAddress(
+            btcMint,
+            marley.publicKey,
+            false
+        )
+        const bobAta = await getAssociatedTokenAddress(
+            btcMint,
+            bob.publicKey,
+            false
+        )
+
+        await sleep(5000)
+
+        await mintBtc(vault, 10_000_000_000_000, true)
+
+        await program.methods
+            .unlock()
+            .accounts({
+                vault,
+                locking,
+                vaultAta,
+                receiverAta: marleyAta,
+                receiver: marley.publicKey,
+                signer: bob.publicKey,
+                mint: btcMint,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .signers([bob])
+            .rpc()
+
+        const account = await program.account.locking.fetch(locking)
+
+        assert(account.amountUnlocked.eq(new BN(1_000_000_000_000)))
+
+        const bobRemainingBalance = (
+            await connection.getTokenAccountBalance(bobAta)
+        ).value.amount
+        const marleyNewBalance = (
+            await connection.getTokenAccountBalance(marleyAta)
+        ).value.amount
+        const vaultNewBalance = (
+            await connection.getTokenAccountBalance(vaultAta)
+        ).value.amount
+
+        assert(bobRemainingBalance === String(20_000_000_000_000))
+        assert(marleyNewBalance === String(1_000_000_000_000))
+        assert(vaultNewBalance === String(10_000_000_000_000))
+    })
+
+    it("Can unlock tokens after all the tokens are unlocked!", async () => {
+        const locking = getLocking(marley.publicKey, btcMint)
+        const vaultAta = await getAssociatedTokenAddress(btcMint, vault, true)
+        const marleyAta = await getAssociatedTokenAddress(
+            btcMint,
+            marley.publicKey,
+            false
+        )
+
+        try {
+            await program.methods
+                .unlock()
+                .accounts({
+                    vault,
+                    locking,
+                    vaultAta,
+                    receiverAta: marleyAta,
+                    receiver: marley.publicKey,
+                    signer: bob.publicKey,
+                    mint: btcMint,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([bob])
+                .rpc()
+
+            throw Error("Should have thrown!")
+        } catch (error) {
+            assert.equal(
+                error.error.errorMessage,
+                "A raw constraint was violated"
+            )
+        }
     })
 })
