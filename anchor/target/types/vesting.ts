@@ -45,98 +45,12 @@ export type Vesting = {
                   108,
                   116
                 ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "vaultAta",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "vault"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
               },
               {
                 "kind": "account",
                 "path": "mint"
               }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
+            ]
           }
         },
         {
@@ -241,13 +155,13 @@ export type Vesting = {
                   108,
                   116
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
               }
             ]
           }
-        },
-        {
-          "name": "vaultAta",
-          "writable": true
         },
         {
           "name": "receiverAta",
@@ -394,19 +308,6 @@ export type Vesting = {
   ],
   "accounts": [
     {
-      "name": "vault",
-      "discriminator": [
-        211,
-        8,
-        232,
-        43,
-        2,
-        152,
-        117,
-        119
-      ]
-    },
-    {
       "name": "vaultInfo",
       "discriminator": [
         133,
@@ -431,13 +332,6 @@ export type Vesting = {
     }
   ],
   "types": [
-    {
-      "name": "vault",
-      "type": {
-        "kind": "struct",
-        "fields": []
-      }
-    },
     {
       "name": "vaultInfo",
       "type": {

@@ -23,7 +23,7 @@ pub mod vesting {
         let vault_info = &mut ctx.accounts.vault_info;
         let mint = &ctx.accounts.mint;
         let signer = &ctx.accounts.signer;
-        let vault_ata = &ctx.accounts.vault_ata;
+        let vault = &ctx.accounts.vault;
         let signer_ata = &ctx.accounts.signer_ata;
         let token_program = &ctx.accounts.token_program;
 
@@ -31,7 +31,7 @@ pub mod vesting {
 
         let transfer = Transfer {
             from: signer_ata.to_account_info(),
-            to: vault_ata.to_account_info(),
+            to: vault.to_account_info(),
             authority: signer.to_account_info(),
         };
         let transfer_context = CpiContext::new(token_program.to_account_info(), transfer);
@@ -41,8 +41,8 @@ pub mod vesting {
         vault_info.receiver = receiver;
         vault_info.amount = amount;
         vault_info.amount_unlocked = 0;
-        vault_info.start_time = end_time;
-        vault_info.start_time = end_time;
+        vault_info.start_time = start_time;
+        vault_info.end_time = end_time;
 
         Ok(())
     }
@@ -50,7 +50,6 @@ pub mod vesting {
     pub fn unlock(ctx: Context<Unlock>) -> Result<()> {
         let vault_info = &mut ctx.accounts.vault_info;
         let vault = &ctx.accounts.vault;
-        let vault_ata = &ctx.accounts.vault_ata;
         let receiver_ata = &ctx.accounts.receiver_ata;
         let token_program = &ctx.accounts.token_program;
 
@@ -67,13 +66,13 @@ pub mod vesting {
         let entitled_amount = if now >= vault_info.end_time {
             vault_info.amount - vault_info.amount_unlocked
         } else {
-            (vault_info.amount * passed_seconds) / total_seconds - vault_info.amount_unlocked
+            vault_info.amount * passed_seconds / total_seconds - vault_info.amount_unlocked
         };
 
-        let seeds = [b"vault".as_ref(), &[ctx.bumps.vault]];
+        let seeds = [b"vault".as_ref(), vault.mint.as_ref(), &[ctx.bumps.vault]];
         let signer = &[&seeds[..]];
         let transfer = Transfer {
-            from: vault_ata.to_account_info(),
+            from: vault.to_account_info(),
             to: receiver_ata.to_account_info(),
             authority: vault.to_account_info(),
         };
@@ -95,20 +94,13 @@ pub struct Lock<'info> {
 
     #[account(
         init_if_needed,
-        seeds=[b"vault"],
+        token::mint = mint,
+        token::authority = vault,
+        payer = signer,
+        seeds=[b"vault".as_ref(), mint.key().as_ref()],
         bump,
-        payer = signer,
-        space = 8 + Vault::INIT_SPACE,
     )]
-    pub vault: Account<'info, Vault>,
-
-    #[account(
-        init_if_needed,
-        associated_token::mint = mint,
-        associated_token::authority = vault,
-        payer = signer,
-    )]
-    pub vault_ata: Account<'info, TokenAccount>,
+    pub vault: Account<'info, TokenAccount>,
 
     #[account(
         init,
@@ -139,17 +131,11 @@ pub struct Unlock<'info> {
 
     #[account(
         mut,
-        seeds=[b"vault"],
+        constraint = vault.mint == mint.key(),
+        seeds=[b"vault".as_ref(), mint.key().as_ref()],
         bump,
     )]
-    pub vault: Account<'info, Vault>,
-
-    #[account(
-        mut,
-        constraint = vault_ata.owner == vault.key(),
-        constraint = vault_ata.mint == mint.key(),
-    )]
-    pub vault_ata: Account<'info, TokenAccount>,
+    pub vault: Account<'info, TokenAccount>,
 
     #[account(
         init_if_needed,
@@ -177,10 +163,6 @@ pub struct Unlock<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
-
-#[account]
-#[derive(InitSpace)]
-pub struct Vault {}
 
 #[account]
 #[derive(InitSpace)]
