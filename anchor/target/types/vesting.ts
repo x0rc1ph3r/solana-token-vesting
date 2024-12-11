@@ -329,6 +329,10 @@ export type Vesting = {
     {
       "code": 6001,
       "name": "cliffPeriodNotPassed"
+    },
+    {
+      "code": 6002,
+      "name": "noTokensToUnlock"
     }
   ],
   "types": [
@@ -359,6 +363,10 @@ export type Vesting = {
           },
           {
             "name": "endTime",
+            "type": "u64"
+          },
+          {
+            "name": "totalWeeks",
             "type": "u64"
           }
         ]

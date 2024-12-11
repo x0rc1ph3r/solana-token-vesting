@@ -323,6 +323,10 @@
     {
       "code": 6001,
       "name": "CliffPeriodNotPassed"
+    },
+    {
+      "code": 6002,
+      "name": "NoTokensToUnlock"
     }
   ],
   "types": [
@@ -353,6 +357,10 @@
           },
           {
             "name": "end_time",
+            "type": "u64"
+          },
+          {
+            "name": "total_weeks",
             "type": "u64"
           }
         ]
