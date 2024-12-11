@@ -318,15 +318,23 @@
   "errors": [
     {
       "code": 6000,
-      "name": "EndBeforeStart"
+      "name": "EndBeforeStart",
+      "msg": "End time cannot be less than start time"
     },
     {
       "code": 6001,
-      "name": "CliffPeriodNotPassed"
+      "name": "CliffPeriodNotPassed",
+      "msg": "Cliff period not yet passed"
     },
     {
       "code": 6002,
-      "name": "NoTokensToUnlock"
+      "name": "NoTokensToUnlock",
+      "msg": "No tokens to unlock"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidVestingPeriod",
+      "msg": "Vesting period should be one week minimum"
     }
   ],
   "types": [

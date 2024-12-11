@@ -45,6 +45,10 @@ pub mod vesting {
         vault_info.end_time = end_time;
         vault_info.total_weeks = (end_time - start_time) / 604800;
 
+        if vault_info.total_weeks == 0 {
+            return Err(CustomError::InvalidVestingPeriod.into());
+        }
+
         Ok(())
     }
 
@@ -177,7 +181,12 @@ pub struct VaultInfo {
 
 #[error_code]
 pub enum CustomError {
+    #[msg("End time cannot be less than start time")]
     EndBeforeStart,
+    #[msg("Cliff period not yet passed")]
     CliffPeriodNotPassed,
+    #[msg("No tokens to unlock")]
     NoTokensToUnlock,
+    #[msg("Vesting period should be one week minimum")]
+    InvalidVestingPeriod,
 }

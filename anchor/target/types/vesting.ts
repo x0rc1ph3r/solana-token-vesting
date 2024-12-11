@@ -324,15 +324,23 @@ export type Vesting = {
   "errors": [
     {
       "code": 6000,
-      "name": "endBeforeStart"
+      "name": "endBeforeStart",
+      "msg": "End time cannot be less than start time"
     },
     {
       "code": 6001,
-      "name": "cliffPeriodNotPassed"
+      "name": "cliffPeriodNotPassed",
+      "msg": "Cliff period not yet passed"
     },
     {
       "code": 6002,
-      "name": "noTokensToUnlock"
+      "name": "noTokensToUnlock",
+      "msg": "No tokens to unlock"
+    },
+    {
+      "code": 6003,
+      "name": "invalidVestingPeriod",
+      "msg": "Vesting period should be one week minimum"
     }
   ],
   "types": [

@@ -18,6 +18,7 @@ describe('vesting', () => {
 
   const receiver = new anchor.Wallet(payer.payer)
 
+  const DECIMALS = 9;
 
   it('Lock tokens', async () => {
 
@@ -26,7 +27,7 @@ describe('vesting', () => {
       payer.payer,                // Fee payer
       payer.publicKey,    // Mint authority
       null,                       // Freeze authority (optional)
-      9                           // Decimals
+      DECIMALS                           // Decimals
     );
 
     const signerAta = (await getOrCreateAssociatedTokenAccount(
@@ -36,7 +37,7 @@ describe('vesting', () => {
       payer.publicKey          // Owner of the token account
     )).address;
 
-    const mintAmount = 1_000_000_000_000; // 1,000 tokens (adjust for decimals)
+    const mintAmount = 1000 * 10 ** DECIMALS; // 1,000 tokens (adjust for decimals)
     await mintTo(
       connection,
       payer.payer,                // Fee payer
@@ -49,7 +50,7 @@ describe('vesting', () => {
     await program.methods
       .lock(
         receiver.publicKey,
-        new anchor.BN(10000000000),
+        new anchor.BN(10 * 10 ** DECIMALS),
         new anchor.BN(1702288720),
         new anchor.BN(1733930920),
       )
@@ -70,8 +71,8 @@ describe('vesting', () => {
     console.table({
       "Mint address": vaultInfoData.mint.toBase58(),
       "Reciever address": vaultInfoData.receiver.toBase58(),
-      "Amount Locked": vaultInfoData.amount.toNumber() / 10 ** 9,
-      "Amount Withdrawn": vaultInfoData.amountUnlocked.toNumber() / 10 ** 9,
+      "Amount Locked": vaultInfoData.amount.toNumber() / 10 ** DECIMALS,
+      "Amount Withdrawn": vaultInfoData.amountUnlocked.toNumber() / 10 ** DECIMALS,
       "Total Weeks": vaultInfoData.totalWeeks.toNumber(),
       "Start time": vaultInfoData.startTime.toNumber(),
       "End time": vaultInfoData.endTime.toNumber(),
@@ -103,8 +104,8 @@ describe('vesting', () => {
     console.table({
       "Mint address": vaultInfoData.mint.toBase58(),
       "Reciever address": vaultInfoData.receiver.toBase58(),
-      "Amount Locked": vaultInfoData.amount.toNumber() / 10 ** 9,
-      "Amount Withdrawn": vaultInfoData.amountUnlocked.toNumber() / 10 ** 9,
+      "Amount Locked": vaultInfoData.amount.toNumber() / 10 ** DECIMALS,
+      "Amount Withdrawn": vaultInfoData.amountUnlocked.toNumber() / 10 ** DECIMALS,
       "Total Weeks": vaultInfoData.totalWeeks.toNumber(),
       "Start time": vaultInfoData.startTime.toNumber(),
       "End time": vaultInfoData.endTime.toNumber(),
