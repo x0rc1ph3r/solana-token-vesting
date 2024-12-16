@@ -67,8 +67,8 @@ pub mod vesting {
 
         let weeks_passed = (now - vault_info.start_time) / 604800;
         let total_entitled_weeks = std::cmp::min(weeks_passed, vault_info.total_weeks);
-        let entitled_amount = (vault_info.amount * total_entitled_weeks / vault_info.total_weeks)
-            .saturating_sub(vault_info.amount_unlocked);
+        let entitled_amount = (vault_info.amount as u128 * total_entitled_weeks as u128 / vault_info.total_weeks as u128)
+            .saturating_sub(vault_info.amount_unlocked as u128) as u64;
 
         require!(entitled_amount > 0, CustomError::NoTokensToUnlock);
 

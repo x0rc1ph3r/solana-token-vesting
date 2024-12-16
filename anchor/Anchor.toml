@@ -12,7 +12,7 @@ vesting = "6FuQ5pZHttiDZCnMXbjR1SGtM7UGRp33jrEGXJtgxg4d"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "Devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
